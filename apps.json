@@ -3,5 +3,10 @@
     "slug": "so-fast",
     "name": "So Fast",
     "description": "Morning routine checklist with a celebration at the end"
+  },
+  {
+    "slug": "brush",
+    "name": "Two-Minute Brush",
+    "description": "Two-minute toothbrush timer with a mouth map and a prize picture"
   }
 ]
