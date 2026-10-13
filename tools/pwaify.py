@@ -52,10 +52,12 @@ def strip_existing_pwa_tags(doc: str) -> str:
     doc = re.sub(r'<link[^>]+rel=["\'](?:apple-touch-icon|icon|shortcut icon)["\'][^>]*>\s*', '', doc, flags=re.I)
     doc = re.sub(r'<meta[^>]+name=["\'](?:theme-color|apple-mobile-web-app-[^"\']+|mobile-web-app-capable)["\'][^>]*>\s*', '', doc, flags=re.I)
     doc = re.sub(r'<link[^>]+rel=["\']preconnect["\'][^>]*>\s*', '', doc, flags=re.I)
+    doc = re.sub(r'<!-- pwa:head -->.*?<!-- /pwa:head -->\n?', '', doc, flags=re.S)
+    doc = re.sub(r'<script>/\* PWA: service worker registration \(added by tools/pwaify.py\) \*/.*?</script>\n?', '', doc, flags=re.S)
     return doc
 
 def inject(doc: str, name: str, theme: str) -> str:
-    head_tags = f'''
+    head_tags = f'''<!-- pwa:head -->
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="{html.escape(theme)}">
 <meta name="mobile-web-app-capable" content="yes">
@@ -64,9 +66,9 @@ def inject(doc: str, name: str, theme: str) -> str:
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<!-- /pwa:head -->
 '''
-    sw_tag = '''
-<script>/* PWA: service worker registration (added by tools/pwaify.py) */
+    sw_tag = '''<script>/* PWA: service worker registration (added by tools/pwaify.py) */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').then(function (reg) {
@@ -223,7 +225,7 @@ h1{{font-size:28px;margin:0 0 20px}}
 # ---------- main ----------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--src', required=True)
+    ap.add_argument('--src', help='HTML to convert. Omit to rebuild an existing app from its deployed index.html')
     ap.add_argument('--slug', required=True)
     ap.add_argument('--name', required=True)
     ap.add_argument('--short-name')
@@ -244,6 +246,15 @@ def main():
     if a.slug in ('tools', 'icons'):
         raise SystemExit('reserved slug')
 
+    app_dir = ROOT / a.slug
+    stash = None
+    if app_dir.exists():
+        # keep the existing app's bundled assets and icon unless replacements are given
+        stash = Path(tempfile.mkdtemp()) / 'prev'
+        shutil.copytree(app_dir, stash)
+    if not a.src:
+        if not stash: raise SystemExit('--src is required for a new app')
+        a.src = str(stash / 'index.html')
     doc = extract_document(Path(a.src).read_text(encoding='utf-8'))
     doc = strip_existing_pwa_tags(doc)
     ext = external_refs(doc)
@@ -252,10 +263,14 @@ def main():
         for u in ext: print('  ' + u, file=sys.stderr)
         sys.exit(2)
 
-    app_dir = ROOT / a.slug
     if app_dir.exists():
         shutil.rmtree(app_dir)
     app_dir.mkdir()
+    GENERATED = {'index.html', 'manifest.webmanifest', 'sw.js', 'icon-source.html', 'icons'}
+    if stash:
+        for item in stash.iterdir():
+            if item.name in GENERATED: continue
+            (shutil.copytree if item.is_dir() else shutil.copy2)(item, app_dir / item.name)
     if a.assets:
         shutil.copytree(a.assets, app_dir, dirs_exist_ok=True)
     (app_dir / 'index.html').write_text(inject(doc, a.short_name or a.name, a.theme), encoding='utf-8')
@@ -264,6 +279,8 @@ def main():
     tmp = Path(tempfile.mkdtemp())
     if a.icon_html:
         icon_src = Path(a.icon_html).resolve()
+    elif stash and (stash / 'icon-source.html').exists() and not a.icon_text:
+        icon_src = stash / 'icon-source.html'
     else:
         icon_src = tmp / 'icon.html'
         icon_src.write_text(default_icon_html(a.icon_text or a.name[:1].upper(), a.icon_fg, a.icon_bg))
