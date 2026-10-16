@@ -1,14 +1,14 @@
 {
   "id": "./",
   "name": "Two-Minute Brush",
-  "short_name": "Brush",
+  "short_name": "Two-Minute B",
   "description": "Two-minute toothbrush timer with a mouth map and a prize picture",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#E8F6F1",
-  "theme_color": "#E8F6F1",
+  "background_color": "#FFE0F0",
+  "theme_color": "#FFE0F0",
   "icons": [
     {
       "src": "icons/icon-192.png",

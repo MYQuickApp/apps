@@ -279,6 +279,9 @@ def main():
     tmp = Path(tempfile.mkdtemp())
     if a.icon_html:
         icon_src = Path(a.icon_html).resolve()
+        # the app folder was just recreated; an icon given from inside it lives in the stash now
+        if stash and icon_src.is_relative_to(app_dir.resolve()):
+            icon_src = stash / icon_src.relative_to(app_dir.resolve())
     elif stash and (stash / 'icon-source.html').exists() and not a.icon_text:
         icon_src = stash / 'icon-source.html'
     else:

@@ -1,9 +1,9 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><!-- pwa:head -->
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#E8F6F1">
+<meta name="theme-color" content="#FFE0F0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Brush">
+<meta name="apple-mobile-web-app-title" content="Two-Minute Brush">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -20,23 +20,15 @@
 <style>
 /* Layout: one-screen app; three views (pick, brush, reveal) plus a grown-ups panel. Mint toothpaste ground, berry accent. */
 :root{
-  --bg:#E8F6F1; --surface:#FFFFFF; --ink:#113B38; --muted:#577A75; --line:#C9E3DB;
-  --accent:#D9406F; --accent-ink:#FFFFFF; --mint:#1E9E80; --tooth:#FFFFFF; --tooth-edge:#B9D5CE;
-  --gum:#F4B3C0; --gum-dim:#F8D3DA; --band:#D9406F;
+  --bg:#FFE6F3; --surface:#FFFFFF; --ink:#4A1D5C; --muted:#8E5FA3; --line:#F5C6E2;
+  --accent:#FF3E9A; --accent-ink:#FFFFFF; --mint:#8B4DF0; --tooth:#FFFFFF; --tooth-edge:#E2B8D6;
+  --gum:#FF9EC7; --gum-dim:#FFD3E7; --band:#FF3E9A; --brushhead:#24C6C2; --sun:#FFC93C;
   --display:"Sniglet","Nunito",ui-rounded,system-ui,sans-serif;
   --body:"Nunito",ui-rounded,system-ui,sans-serif;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0D2220; --surface:#15302C; --ink:#E4F4EF; --muted:#8DB2AB; --line:#24453F;
-  --accent:#FF6E9A; --accent-ink:#2A0814; --mint:#46D1AF; --tooth:#EEF4F2; --tooth-edge:#6F8F89;
-  --gum:#8A4357; --gum-dim:#4A2D35; --band:#FF6E9A; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0D2220; --surface:#15302C; --ink:#E4F4EF; --muted:#8DB2AB; --line:#24453F;
-  --accent:#FF6E9A; --accent-ink:#2A0814; --mint:#46D1AF; --tooth:#EEF4F2; --tooth-edge:#6F8F89;
-  --gum:#8A4357; --gum-dim:#4A2D35; --band:#FF6E9A; color-scheme:dark}
-
 html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;padding-inline:16px;box-sizing:border-box}
+body{background-color:var(--bg);background-image:radial-gradient(circle at 12% 18%,#fff 0 3px,transparent 4px),radial-gradient(circle at 78% 9%,#FFF3A8 0 4px,transparent 5px),radial-gradient(circle at 90% 46%,#fff 0 3px,transparent 4px),radial-gradient(circle at 6% 64%,#D9C4FF 0 5px,transparent 6px),radial-gradient(circle at 60% 88%,#fff 0 3px,transparent 4px),linear-gradient(170deg,#FFE0F0 0%,#F1E2FF 55%,#FFE6F3 100%);background-size:260px 260px,300px 300px,240px 240px,320px 320px,280px 280px,100% 100%;background-attachment:fixed;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;padding-inline:16px;box-sizing:border-box}
 *,*::before,*::after{box-sizing:inherit}
 .app{max-width:720px;margin:0 auto;padding-block:18px 28px;display:flex;flex-direction:column;gap:20px;min-height:100%}
 h1,h2{font-family:var(--display);font-weight:800;margin:0;text-wrap:balance;letter-spacing:.2px}
@@ -126,6 +118,29 @@ svg .handle{fill:var(--accent)}
 .meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
 .meter b{display:block;height:100%;background:var(--mint)}
 .status{font-size:.9rem;color:var(--muted);min-height:1.3em}
+
+
+/* playful extras */
+h1{color:var(--accent);text-shadow:0 3px 0 #fff,0 5px 0 color-mix(in srgb,var(--mint) 30%,transparent)}
+.brand small{color:var(--mint)}
+h2{color:var(--ink)}
+.big{background:linear-gradient(135deg,#FF5FB0,#B45CFF);box-shadow:0 6px 0 #8A2C9E,0 12px 24px rgba(180,60,200,.3);animation:wiggle 3.2s ease-in-out infinite}
+.big:active{box-shadow:0 3px 0 #8A2C9E}
+@keyframes wiggle{0%,82%,100%{transform:none}86%{transform:rotate(-2.5deg) scale(1.03)}90%{transform:rotate(2.5deg) scale(1.03)}94%{transform:rotate(-1.5deg)}}
+.pick{border-width:4px;border-color:#fff;box-shadow:0 6px 14px rgba(140,60,170,.18)}
+.pick:nth-child(4n+1){transform:rotate(-2deg)}.pick:nth-child(4n+2){transform:rotate(1.5deg)}.pick:nth-child(4n+3){transform:rotate(-1deg)}.pick:nth-child(4n){transform:rotate(2deg)}
+.pick[aria-pressed="true"]{transform:scale(1.04) rotate(0)}
+.where,.card,.empty{box-shadow:0 6px 16px rgba(140,60,170,.12)}
+.where .surf{color:var(--accent)}
+.segs span{background:#fff}
+.segs span:nth-child(6n+1) b{background:#FF5C8A}.segs span:nth-child(6n+2) b{background:#FF9F43}.segs span:nth-child(6n+3) b{background:var(--sun)}
+.segs span:nth-child(6n+4) b{background:#3DD68C}.segs span:nth-child(6n+5) b{background:#3BB2F6}.segs span:nth-child(6n) b{background:#A66CFF}
+.time{color:var(--mint)}
+svg .head{fill:var(--brushhead)}
+.reveal{background:radial-gradient(circle at 50% 40%,#FFF6C9 0,#FFD6EC 45%,#E6D4FF 100%)}
+.upl{color:#fff}
+.startbar{background:none}
+.mouth{overflow:visible}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -395,7 +410,7 @@ function confetti(){
   const c=$("confetti"); c.hidden=false; const ctx=c.getContext("2d");
   const W=c.width=innerWidth*devicePixelRatio, H=c.height=innerHeight*devicePixelRatio;
   const cs=getComputedStyle(document.documentElement);
-  const cols=["--accent","--mint","--gum"].map(v=>cs.getPropertyValue(v).trim()).concat(["#FFD23F","#5AA9E6"]);
+  const cols=["--accent","--mint","--gum","--brushhead"].map(v=>cs.getPropertyValue(v).trim()).concat(["#FFD23F","#5AA9E6"]);
   const ps=Array.from({length:150},()=>({x:Math.random()*W,y:-Math.random()*H*.5,vx:(Math.random()-.5)*4,vy:2+Math.random()*5,r:Math.random()*6,s:(6+Math.random()*8)*devicePixelRatio,c:cols[Math.random()*cols.length|0]}));
   const end=performance.now()+4500;
   (function step(now){
