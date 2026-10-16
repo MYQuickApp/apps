@@ -144,12 +144,20 @@ svg .head{fill:var(--brushhead)}
 
 /* lock wheels: big current word, tiny neighbors; font size is fitted to the screen width in JS */
 @font-face{font-family:"Fredoka";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/fredoka-latin-600-normal.woff2) format("woff2")}
-.lock{position:relative;display:grid;grid-template-columns:repeat(3,max-content);justify-content:center;column-gap:.22em;font-family:"Fredoka",var(--body);font-weight:600;font-size:2.4rem;height:2.25em;overflow:hidden}
+.lock{position:relative;display:grid;grid-template-columns:repeat(5,max-content);justify-content:center;column-gap:.13em;font-family:"Fredoka",var(--body);font-weight:600;font-size:2.4rem;height:2.25em;overflow:hidden}
 .wheel{position:relative;height:100%}
 .strip{position:absolute;inset:0}
 .strip span{position:absolute;top:50%;line-height:1;white-space:nowrap;margin-top:-.5em;color:var(--muted);transition:transform .6s cubic-bezier(.3,1.4,.5,1),opacity .45s,color .3s}
 .w-l span{right:0;transform-origin:right center}.w-m span{left:50%;transform-origin:center center}.w-r span{left:0;transform-origin:left center}
 .w-l .on{color:var(--mint)}.w-m .on{color:var(--accent)}.w-r .on{color:#E2733A}
+.sep{display:grid;place-items:center;width:.3em;transition:transform .5s ease}
+.sep svg{width:.3em;height:.3em;fill:var(--sun);filter:drop-shadow(0 1px 0 rgba(160,90,0,.25))}
+/* teeth: off-white until their section is done, then brighter white with sparkles */
+svg .t{fill:#F2EDE3}
+svg .t.done{fill:#FFFFFF;stroke:#EDC3DA}
+svg .arch.dim .t.done{opacity:.9}
+svg .spk path{transform-box:fill-box;transform-origin:center;transform:scale(.7);animation:spk var(--d,2.2s) ease-in-out var(--dl,0s) infinite both}
+@keyframes spk{0%,100%{transform:scale(0) rotate(0);opacity:0}45%{transform:scale(1) rotate(45deg);opacity:1}70%{transform:scale(.55) rotate(70deg);opacity:.8}}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 /* icon controls */
 .ctrls{display:flex;align-items:center;gap:6px}
@@ -200,7 +208,9 @@ svg .head{fill:var(--brushhead)}
     <svg id="mouth" class="mouth" viewBox="-20 -10 400 450" role="img" aria-label="Mouth map showing where to brush"></svg>
     <div class="lock" aria-hidden="true">
       <div class="wheel w-l"><div class="strip" id="wl"></div></div>
+      <span class="sep"><svg viewBox="0 0 24 24"><path d="M12 1.5c.6 4.6 2.9 7.9 10.5 10.5C14.9 14.6 12.6 17.9 12 22.5 11.4 17.9 9.1 14.6 1.5 12 9.1 9.4 11.4 6.1 12 1.5z"/></svg></span>
       <div class="wheel w-m"><div class="strip" id="wm"></div></div>
+      <span class="sep"><svg viewBox="0 0 24 24"><path d="M12 1.5c.6 4.6 2.9 7.9 10.5 10.5C14.9 14.6 12.6 17.9 12 22.5 11.4 17.9 9.1 14.6 1.5 12 9.1 9.4 11.4 6.1 12 1.5z"/></svg></span>
       <div class="wheel w-r"><div class="strip" id="wr"></div></div>
     </div>
     <div class="sr" id="where" aria-live="polite"></div>
@@ -297,10 +307,22 @@ function fitWheels(){
   const m=document.createElement("span"); m.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font:600 100px Fredoka,Nunito,sans-serif"; document.body.appendChild(m);
   const widths=WHEELS.map(w=>Math.max(...w.loop.map(t=>{m.textContent=t;return m.getBoundingClientRect().width})));
   m.remove();
-  const avail=lock.parentElement.clientWidth, gap=.22*100*2; if(!avail) return;
-  const fs=Math.min(64, avail/((widths[0]+widths[1]+widths[2]+gap)/100));
+  const avail=lock.parentElement.clientWidth; if(!avail) return;
+  const extra=(2*.3+4*.13)*100; // two separators and four gaps, in px per 100px of font
+  const fs=Math.min(64, avail/((widths[0]+widths[1]+widths[2]+extra)/100));
   lock.style.fontSize=fs+"px";
-  lock.style.gridTemplateColumns=widths.map(x=>(x*fs/100).toFixed(1)+"px").join(" ");
+  const c=widths.map(x=>(x*fs/100).toFixed(1)+"px");
+  lock.style.gridTemplateColumns=[c[0],"max-content",c[1],"max-content",c[2]].join(" ");
+  midCol=widths[1]*fs/100; midW={}; const mm=document.createElement("span"); mm.style.cssText=m.style.cssText; document.body.appendChild(mm);
+  for(const t of WHEELS[1].loop){mm.textContent=t; midW[t]=mm.getBoundingClientRect().width*fs/100} mm.remove();
+  placeSeps();
+}
+let midCol=0, midW={};
+function placeSeps(){ // keep each star halfway between neighbouring words although the middle word is centred in its column
+  const w=WHEELS[1]; if(w.pos===null||!midCol) return;
+  const word=w.loop[((w.pos%w.loop.length)+w.loop.length)%w.loop.length], pad=(midCol-(midW[word]||midCol))/2;
+  const seps=document.querySelectorAll(".lock .sep");
+  if(seps.length===2){seps[0].style.transform=`translateX(${(pad/2).toFixed(1)}px)`; seps[1].style.transform=`translateX(${(-pad/2).toFixed(1)}px)`}
 }
 function placeWheel(w){
   w.items.forEach((sp,k)=>{const off=k-SPAN-w.pos, a=Math.abs(off);
@@ -317,7 +339,7 @@ function setWheel(w,word){
   else{const cur=((w.pos%n)+n)%n; if(cur===target) return false;
     let d=(target-cur+n)%n; if(d>n/2) d-=n; w.pos+=d;
     if(Math.abs(w.pos)>SPAN-3){w.pos=target; w.items.forEach(sp=>sp.style.transition="none"); placeWheel(w); void $(w.id).offsetWidth; w.items.forEach(sp=>sp.style.transition=""); return true}}
-  placeWheel(w); return true;
+  placeWheel(w); if(w===WHEELS[1]) placeSeps(); return true;
 }
 
 /* ---------- Mouth map geometry ---------- */
@@ -347,9 +369,9 @@ function arcPath(arch,t0,t1,off){
 function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
 
 const svg=$("mouth"); const archEls={}; const toothEls=[];
-let band, brushG, lblL, lblR;
+let band, brushG, lblL, lblR, spkLayer, lastSec=null;
 function buildMouth(){
-  svg.innerHTML="";
+  svg.innerHTML=""; toothEls.length=0; lastSec=null;
   for(const arch of ["top","bottom"]){
     const g=el("g",{class:"arch"},svg); archEls[arch]=g;
     el("path",{class:"gum",d:arcPath(arch,0.02,Math.PI-0.02,0),"stroke-width":50},g);
@@ -360,6 +382,7 @@ function buildMouth(){
       toothEls.push({el:r,arch,g:T.g});
     });
   }
+  spkLayer=el("g",{},svg);
   band=el("path",{class:"band",d:""},svg);
   lblR=el("text",{class:"lbl",x:-2,y:221},svg);
   lblL=el("text",{class:"lbl",x:362,y:221},svg);
@@ -379,8 +402,26 @@ function setSideLabels(){
   lblR.textContent = mirror ? "LEFT" : "RIGHT";
 }
 let cur = {arch:"top",range:[0,1],off:0};
+function finishSection(sec){
+  const [arch,grp]=sec.split(":");
+  toothEls.forEach(o=>{if(o.arch===arch&&o.g===grp)o.el.classList.add("done")});
+  const rg=RANGE[grp], n=3;
+  for(let k=0;k<n;k++){
+    const t=rg[0]+(rg[1]-rg[0])*(k+.3+Math.random()*.4)/n, off=(k%2?-1:1)*(16+Math.random()*8);
+    const p=pt(arch,t,off), sz=1.25+Math.random()*.6;
+    const g=el("g",{class:"spk",transform:`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${sz.toFixed(2)})`},spkLayer);
+    const path=el("path",{d:"M0-7C.4-3 1.6-1.6 7 0 1.6 1.6.4 3 0 7-.4 3-1.6 1.6-7 0-1.6-1.6-.4-3 0-7z",fill:k%2?"#FFFFFF":"#FFC93C",stroke:k%2?"#E58BB7":"#E0A100","stroke-width":.9},g);
+    path.style.setProperty("--d",(1.8+Math.random()*1.2).toFixed(2)+"s");
+    path.style.setProperty("--dl",(-Math.random()*2).toFixed(2)+"s");
+  }
+}
+function resetSections(){toothEls.forEach(o=>o.el.classList.remove("done")); if(spkLayer) spkLayer.innerHTML=""; lastSec=null}
 function showSpot(i){
   const s=PLAN[i]; const grp = s.part==="front"?"fr":groupFor(s.side);
+  if(i===0) resetSections();
+  const sec=s.arch+":"+grp;
+  if(lastSec && lastSec!==sec) finishSection(lastSec);
+  lastSec=sec;
   archEls.top.classList.toggle("dim", s.arch!=="top");
   archEls.bottom.classList.toggle("dim", s.arch!=="bottom");
   toothEls.forEach(o=>{
