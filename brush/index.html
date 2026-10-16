@@ -142,14 +142,13 @@ svg .head{fill:var(--brushhead)}
 .startbar{background:none}
 .mouth{overflow:visible}
 
-/* lock wheels */
-.lock{position:relative;display:grid;grid-template-columns:repeat(3,max-content);justify-content:center;column-gap:.28em;font-family:var(--display);font-weight:800;font-size:clamp(1.3rem,6.9vw,2.4rem);--row:1.3em;height:calc(var(--row)*3);overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
-.lock::before{content:"";position:absolute;left:0;right:0;top:var(--row);height:var(--row);border-radius:18px;background:#fff;box-shadow:0 4px 12px rgba(140,60,170,.15),inset 0 0 0 3px var(--line)}
+/* lock wheels: big current word, tiny neighbors; font size is fitted to the screen width in JS */
+@font-face{font-family:"Fredoka";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/fredoka-latin-600-normal.woff2) format("woff2")}
+.lock{position:relative;display:grid;grid-template-columns:repeat(3,max-content);justify-content:center;column-gap:.22em;font-family:"Fredoka",var(--body);font-weight:600;font-size:2.4rem;height:2.25em;overflow:hidden}
 .wheel{position:relative;height:100%}
-.strip{display:flex;flex-direction:column;transition:transform .6s cubic-bezier(.3,1.45,.5,1)}
-.strip span{height:var(--row);line-height:var(--row);white-space:nowrap;color:var(--muted);opacity:.3;transition:color .3s,opacity .3s}
-.strip span.on{opacity:1}
-.w-l .strip{align-items:flex-end}.w-m .strip{align-items:center}.w-r .strip{align-items:flex-start}
+.strip{position:absolute;inset:0}
+.strip span{position:absolute;top:50%;line-height:1;white-space:nowrap;margin-top:-.5em;color:var(--muted);transition:transform .6s cubic-bezier(.3,1.4,.5,1),opacity .45s,color .3s}
+.w-l span{right:0;transform-origin:right center}.w-m span{left:50%;transform-origin:center center}.w-r span{left:0;transform-origin:left center}
 .w-l .on{color:var(--mint)}.w-m .on{color:var(--accent)}.w-r .on{color:#E2733A}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 /* icon controls */
@@ -289,18 +288,36 @@ function shortText(s){
 /* ---------- Lock wheels ---------- */
 function wordsFor(s){return [s.arch, s.part==="front"?"front":s.side, s.surf==="chew"?"chewing":s.surf==="in"?"inside":"outside"]}
 const WHEELS=[{id:"wl",loop:["top","bottom"]},{id:"wm",loop:["right","front","left"]},{id:"wr",loop:["outside","inside","chewing"]}];
-const SPAN=24;
+const SPAN=24, SMALL=.32, GAP=.78;
 function buildWheels(){for(const w of WHEELS){const el=$(w.id);el.innerHTML="";w.pos=null;w.items=[];
-  for(let k=-SPAN;k<=SPAN;k++){const sp=document.createElement("span");sp.textContent=w.loop[((k%w.loop.length)+w.loop.length)%w.loop.length];el.appendChild(sp);w.items.push(sp)}}}
+  for(let k=-SPAN;k<=SPAN;k++){const sp=document.createElement("span");sp.textContent=w.loop[((k%w.loop.length)+w.loop.length)%w.loop.length];el.appendChild(sp);w.items.push(sp)}}
+  fitWheels(); addEventListener("resize",fitWheels); document.fonts&&document.fonts.ready.then(fitWheels)}
+function fitWheels(){
+  const lock=document.querySelector(".lock"); if(!lock) return;
+  const m=document.createElement("span"); m.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font:600 100px Fredoka,Nunito,sans-serif"; document.body.appendChild(m);
+  const widths=WHEELS.map(w=>Math.max(...w.loop.map(t=>{m.textContent=t;return m.getBoundingClientRect().width})));
+  m.remove();
+  const avail=lock.parentElement.clientWidth, gap=.22*100*2; if(!avail) return;
+  const fs=Math.min(64, avail/((widths[0]+widths[1]+widths[2]+gap)/100));
+  lock.style.fontSize=fs+"px";
+  lock.style.gridTemplateColumns=widths.map(x=>(x*fs/100).toFixed(1)+"px").join(" ");
+}
+function placeWheel(w){
+  w.items.forEach((sp,k)=>{const off=k-SPAN-w.pos, a=Math.abs(off);
+    const mid=w.id==="wm"?"translateX(-50%) ":"";
+    const y=off===0?0:Math.sign(off)*(a===1?GAP:GAP*1.5);
+    const sc=off===0?1:a===1?SMALL:.2;
+    sp.style.transform=`${mid}translateY(${y}em) scale(${sc})`;
+    sp.style.opacity=off===0?1:a===1?.45:0;
+    sp.classList.toggle("on",off===0)});
+}
 function setWheel(w,word){
   const n=w.loop.length, target=w.loop.indexOf(word);
   if(w.pos===null){w.pos=target}
   else{const cur=((w.pos%n)+n)%n; if(cur===target) return false;
     let d=(target-cur+n)%n; if(d>n/2) d-=n; w.pos+=d;
-    if(Math.abs(w.pos)>SPAN-3){w.pos=target; const el=$(w.id); el.style.transition="none"; void el.offsetWidth; el.style.transition=""}}
-  const el=$(w.id); el.style.transform=`translateY(calc(var(--row)*${-(w.pos+SPAN-1)}))`;
-  w.items.forEach((sp,k)=>sp.classList.toggle("on",k===w.pos+SPAN));
-  return true;
+    if(Math.abs(w.pos)>SPAN-3){w.pos=target; w.items.forEach(sp=>sp.style.transition="none"); placeWheel(w); void $(w.id).offsetWidth; w.items.forEach(sp=>sp.style.transition=""); return true}}
+  placeWheel(w); return true;
 }
 
 /* ---------- Mouth map geometry ---------- */
@@ -427,7 +444,7 @@ async function grabWake(){try{wake=await navigator.wakeLock?.request("screen")}c
 function dropWake(){try{wake&&wake.release()}catch(e){} wake=null}
 function startBrushing(){
   try{actx = actx || new (window.AudioContext||window.webkitAudioContext)(); actx.resume&&actx.resume()}catch(e){actx=null}
-  show("vBrush");
+  show("vBrush"); fitWheels();
   before=0; spotIdx=-1; running=true; startTs=performance.now();
   setPauseIcon(true);
   beep(660,.15); beep(990,.2,.15);
