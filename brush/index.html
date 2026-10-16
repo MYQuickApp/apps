@@ -142,6 +142,30 @@ svg .head{fill:var(--brushhead)}
 .startbar{background:none}
 .mouth{overflow:visible}
 
+/* lock wheels */
+.lock{position:relative;display:grid;grid-template-columns:repeat(3,max-content);justify-content:center;column-gap:.28em;font-family:var(--display);font-weight:800;font-size:clamp(1.3rem,6.9vw,2.4rem);--row:1.3em;height:calc(var(--row)*3);overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
+.lock::before{content:"";position:absolute;left:0;right:0;top:var(--row);height:var(--row);border-radius:18px;background:#fff;box-shadow:0 4px 12px rgba(140,60,170,.15),inset 0 0 0 3px var(--line)}
+.wheel{position:relative;height:100%}
+.strip{display:flex;flex-direction:column;transition:transform .6s cubic-bezier(.3,1.45,.5,1)}
+.strip span{height:var(--row);line-height:var(--row);white-space:nowrap;color:var(--muted);opacity:.3;transition:color .3s,opacity .3s}
+.strip span.on{opacity:1}
+.w-l .strip{align-items:flex-end}.w-m .strip{align-items:center}.w-r .strip{align-items:flex-start}
+.w-l .on{color:var(--mint)}.w-m .on{color:var(--accent)}.w-r .on{color:#E2733A}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* icon controls */
+.ctrls{display:flex;align-items:center;gap:6px}
+.spacer{flex:1}
+.ico{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;color:var(--mint);transition:opacity .2s,transform .1s}
+.ico svg{width:40px;height:40px;fill:currentColor}
+.ico .w{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}
+.ico:active{transform:scale(.88)}
+.ico:disabled{opacity:.25;cursor:default;transform:none}
+#stopBtn{color:var(--accent)}
+.vmeter{display:flex;gap:4px;align-items:flex-end;height:22px}
+.vmeter i{width:6px;border-radius:3px;background:var(--line)}
+.vmeter i:nth-child(1){height:30%}.vmeter i:nth-child(2){height:47%}.vmeter i:nth-child(3){height:64%}.vmeter i:nth-child(4){height:82%}.vmeter i:nth-child(5){height:100%}
+.vmeter i.on{background:var(--mint)}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -172,19 +196,22 @@ svg .head{fill:var(--brushhead)}
   <section id="vBrush" class="brush" hidden>
     <div class="clock">
       <div class="time" id="time">2:00</div>
-      <div class="stepn" id="stepn">Spot 1 of 16</div>
     </div>
     <div class="segs" id="segs" aria-hidden="true"></div>
     <svg id="mouth" class="mouth" viewBox="-20 -10 400 450" role="img" aria-label="Mouth map showing where to brush"></svg>
-    <div class="where" id="where" aria-live="polite">
-      <div class="region" id="region"></div>
-      <div class="surf" id="surf"></div>
-      <div class="next" id="next"></div>
+    <div class="lock" aria-hidden="true">
+      <div class="wheel w-l"><div class="strip" id="wl"></div></div>
+      <div class="wheel w-m"><div class="strip" id="wm"></div></div>
+      <div class="wheel w-r"><div class="strip" id="wr"></div></div>
     </div>
-    <div class="row">
-      <button id="pauseBtn" class="ghost" type="button">Pause</button>
-      <button id="stopBtn" class="ghost" type="button">Stop</button>
-      <button id="soundBtn" class="ghost" type="button" aria-pressed="true">Sound on</button>
+    <div class="sr" id="where" aria-live="polite"></div>
+    <div class="ctrls">
+      <button id="pauseBtn" class="ico" type="button" aria-label="Pause"><svg viewBox="0 0 24 24"><g id="icoPause"><rect x="6" y="5" width="4.2" height="14" rx="1.6"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6"/></g><path id="icoPlay" d="M8 5.2v13.6c0 .8.9 1.3 1.6.8l10-6.8c.6-.4.6-1.2 0-1.6l-10-6.8C8.9 3.9 8 4.4 8 5.2z" hidden/></svg></button>
+      <button id="stopBtn" class="ico" type="button" aria-label="Stop"><svg viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="2.6"/></svg></button>
+      <span class="spacer"></span>
+      <button id="volDown" class="ico" type="button" aria-label="Volume down"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z"/><path class="w" d="M15.5 12h5"/></svg></button>
+      <span class="vmeter" id="vmeter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <button id="volUp" class="ico" type="button" aria-label="Volume up"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z"/><path class="w" d="M15.5 12h5M18 9.5v5"/></svg></button>
     </div>
   </section>
 
@@ -259,6 +286,23 @@ function shortText(s){
   return r+", "+f;
 }
 
+/* ---------- Lock wheels ---------- */
+function wordsFor(s){return [s.arch, s.part==="front"?"front":s.side, s.surf==="chew"?"chewing":s.surf==="in"?"inside":"outside"]}
+const WHEELS=[{id:"wl",loop:["top","bottom"]},{id:"wm",loop:["right","front","left"]},{id:"wr",loop:["outside","inside","chewing"]}];
+const SPAN=24;
+function buildWheels(){for(const w of WHEELS){const el=$(w.id);el.innerHTML="";w.pos=null;w.items=[];
+  for(let k=-SPAN;k<=SPAN;k++){const sp=document.createElement("span");sp.textContent=w.loop[((k%w.loop.length)+w.loop.length)%w.loop.length];el.appendChild(sp);w.items.push(sp)}}}
+function setWheel(w,word){
+  const n=w.loop.length, target=w.loop.indexOf(word);
+  if(w.pos===null){w.pos=target}
+  else{const cur=((w.pos%n)+n)%n; if(cur===target) return false;
+    let d=(target-cur+n)%n; if(d>n/2) d-=n; w.pos+=d;
+    if(Math.abs(w.pos)>SPAN-3){w.pos=target; const el=$(w.id); el.style.transition="none"; void el.offsetWidth; el.style.transition=""}}
+  const el=$(w.id); el.style.transform=`translateY(calc(var(--row)*${-(w.pos+SPAN-1)}))`;
+  w.items.forEach((sp,k)=>sp.classList.toggle("on",k===w.pos+SPAN));
+  return true;
+}
+
 /* ---------- Mouth map geometry ---------- */
 const NS="http://www.w3.org/2000/svg";
 const G = {cx:180, top:{cy:200}, bottom:{cy:232}, rx:130, ry:140};
@@ -331,11 +375,9 @@ function showSpot(i){
   const off = s.surf==="out"?31 : s.surf==="in"?-31 : 0;
   band.setAttribute("d", s.surf==="chew" ? "" : arcPath(s.arch,rg[0],rg[1],off));
   cur={arch:s.arch,range:rg,off};
-  $("region").textContent=regionText(s);
-  $("surf").textContent=surfText(s);
-  $("next").textContent = i<PLAN.length-1 ? "Next: "+shortText(PLAN[i+1]) : "Last spot. Almost done!";
-  $("stepn").textContent="Spot "+(i+1)+" of "+PLAN.length;
-  const w=$("where"); w.classList.remove("flash"); void w.offsetWidth; w.classList.add("flash");
+  const ws=wordsFor(s), moved=WHEELS.map((w,k)=>setWheel(w,ws[k])).some(Boolean);
+  $("where").textContent=ws.join(" ");
+  if(moved && i>0) tick();
 }
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function moveBrush(now){
@@ -346,16 +388,23 @@ function moveBrush(now){
 }
 
 /* ---------- Sound ---------- */
-let actx=null, soundOn=store.get("brush:sound",true);
+let actx=null, vol=store.get("brush:vol",0.6);
 function beep(freq,dur,delay){
-  if(!soundOn||!actx) return;
+  if(vol<=0.001||!actx) return;
   const t=actx.currentTime+(delay||0), o=actx.createOscillator(), g=actx.createGain();
   o.type="sine"; o.frequency.value=freq; o.connect(g); g.connect(actx.destination);
-  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.25,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.42*vol,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
   o.start(t); o.stop(t+dur+0.05);
 }
-function setSoundBtn(){const b=$("soundBtn");b.textContent=soundOn?"Sound on":"Sound off";b.setAttribute("aria-pressed",String(soundOn))}
+function tick(){beep(2200,.03);beep(1700,.03,.07)}
+function setVolUI(){const lv=Math.round(vol*5);[...$("vmeter").children].forEach((b,k)=>b.classList.toggle("on",k<lv));
+  $("volDown").disabled=lv<=0; $("volUp").disabled=lv>=5;
+  $("volDown").setAttribute("aria-label",lv<=0?"Muted":"Volume down");}
+function changeVol(d){vol=Math.min(1,Math.max(0,Math.round((vol+d)*5)/5));store.set("brush:vol",vol);setVolUI();
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume()}catch(e){actx=null}
+  beep(880,.12)}
 
+function setPauseIcon(r){$("icoPause").toggleAttribute("hidden",!r);$("icoPlay").toggleAttribute("hidden",r);$("pauseBtn").setAttribute("aria-label",r?"Pause":"Keep going")}
 /* ---------- Timer ---------- */
 let running=false, startTs=0, before=0, spotIdx=-1, raf=0, wake=null;
 function fmt(ms){const s=Math.ceil(ms/1000);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
@@ -380,15 +429,15 @@ function startBrushing(){
   try{actx = actx || new (window.AudioContext||window.webkitAudioContext)(); actx.resume&&actx.resume()}catch(e){actx=null}
   show("vBrush");
   before=0; spotIdx=-1; running=true; startTs=performance.now();
-  $("pauseBtn").textContent="Pause";
+  setPauseIcon(true);
   beep(660,.15); beep(990,.2,.15);
   grabWake();
   cancelAnimationFrame(raf); raf=requestAnimationFrame(frame);
 }
 function togglePause(){
   const now=performance.now();
-  if(running){before+=now-startTs; running=false; $("pauseBtn").textContent="Keep going"; dropWake()}
-  else{startTs=now; running=true; $("pauseBtn").textContent="Pause"; grabWake()}
+  if(running){before+=now-startTs; running=false; setPauseIcon(false); dropWake()}
+  else{startTs=now; running=true; setPauseIcon(true); grabWake()}
 }
 function stopBrushing(){running=false; cancelAnimationFrame(raf); dropWake(); show("vPick")}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&running&&!wake)grabWake()});
@@ -542,12 +591,12 @@ $("fileIn").addEventListener("change",async e=>{
 $("startBtn").onclick=startBrushing;
 $("pauseBtn").onclick=togglePause;
 $("stopBtn").onclick=stopBrushing;
-$("soundBtn").onclick=()=>{soundOn=!soundOn;store.set("brush:sound",soundOn);setSoundBtn()};
+$("volUp").onclick=()=>changeVol(.2); $("volDown").onclick=()=>changeVol(-.2);
 $("doneBtn").onclick=()=>{$("vReveal").hidden=true;$("confetti").hidden=true;show("vPick")};
 $("closeAdult").onclick=()=>{show("vPick");renderPick()};
 $("mirrorIn").checked=mirror;
 $("mirrorIn").onchange=e=>{mirror=e.target.checked;store.set("brush:mirror",mirror);setSideLabels()};
-setSoundBtn(); buildMouth(); buildSegs(); setSideLabels(); showSpot(0); moveBrush(0);
+setVolUI(); buildWheels(); buildMouth(); buildSegs(); setSideLabels(); showSpot(0); moveBrush(0);
 renderPick();
 
 loadPhotos();
